@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+
+<title>Media Query Hack &mdash; MQ Application</title>
+
+<!-- meta -->
+<meta charset="utf-8">
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<!-- disable iPhone inital scale -->
+<meta name="viewport" content="width=device-width; initial-scale=1.0">
+
+<!-- css -->
+<link rel="stylesheet" type="text/css" href="css/site.css">
+<!-- media queries css -->
+<link rel="stylesheet" type="text/css" href="css/media-queries.css">
+
+<!-- script -->
+<script type="text/javascript" src="js/jquery-1.6.4.min.js"></script>
+<script type="text/javascript" src="js/glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="js/webgl-utils.js"></script>
+<script type="text/javascript" src="js/webgl.js"></script>
+<!--
+	SHADER : FRAGMENT
+//-->
+<script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision highp float;
+    #endif
+
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+
+    uniform float uMaterialShininess;
+
+    uniform bool uShowSpecularHighlights;
+    uniform bool uUseLighting;
+    uniform bool uUseTextures;
+
+    uniform vec3 uAmbientColor;
+
+    uniform vec3 uPointLightingLocation;
+    uniform vec3 uPointLightingSpecularColor;
+    uniform vec3 uPointLightingDiffuseColor;
+
+    uniform sampler2D uSampler;
+
+    void main(void) {
+        vec3 lightWeighting;
+        if (!uUseLighting) {
+            lightWeighting = vec3(1.0, 1.0, 1.0);
+        } else {
+            vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);
+            vec3 normal = normalize(vTransformedNormal);
+
+            float specularLightWeighting = 0.0;
+            if (uShowSpecularHighlights) {
+                vec3 eyeDirection = normalize(-vPosition.xyz);
+                vec3 reflectionDirection = reflect(-lightDirection, normal);
+
+                specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);
+            }
+
+            float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
+            lightWeighting = uAmbientColor
+                + uPointLightingSpecularColor * specularLightWeighting
+                + uPointLightingDiffuseColor * diffuseLightWeighting;
+        }
+
+        vec4 fragmentColor;
+        if (uUseTextures) {
+            fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        } else {
+            fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+        gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+    }
+</script>
+<!--
+	SHADER : VERTEX
+//-->
+<script id="per-fragment-lighting-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+
+
+    void main(void) {
+        vPosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+        gl_Position = uPMatrix * vPosition;
+        vTextureCoord = aTextureCoord;
+        vTransformedNormal = uNMatrix * aVertexNormal;
+    }
+</script>
+<script type="text/javascript" src="js/site.js"></script>
+<!-- html5.js for IE less than 9 -->
+<!--[if lt IE 9]>
+	<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+
+<!-- css3-mediaqueries.js for IE less than 9 -->
+<!--[if lt IE 9]>
+	<script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+<![endif]-->
+
+</head>
+
+
+<body onload="webGLStart();">
+
+<div id="pagewrap">
+
+	<header id="header">
+		
+		<hgroup>
+			<h1 id="site-logo"><a href="#">Mozilla</a></h1>
+			<h1 id="site-description"><a href="#">Description</a></h1>
+		</hgroup>
+		
+		<!--
+		<nav>
+			<ul id="main-nav" class="clearfix">
+				<li><a href="">Home</a></li>
+			</ul>
+		</nav>
+		-->
+
+	</header>
+	<!-- /#header -->
+
+	<div id="content">
+	
+		<article class="post clearfix webgl">
+    		
+			<header>
+				<h1 class="post-title">
+					<a href="#">Model: Stanford Bunny</a>
+				</h1>
+				<p class="post-meta">
+					<time class="post-date" datetime="2011-05-08" pubdate>May 8, 2011</time> <em>in</em> <a href="#">Category</a>
+				</p>
+			</header>
+			
+			<figure>
+				<canvas id="canvas" style="border: none;" width="380px" height="380px"></canvas>
+			</figure>
+			
+			<div class="post-content">
+				<p>
+The Stanford Bunny model was originally constructed in 1994 by <a href="http://www.gvu.gatech.edu/people/faculty/greg.turk/">Greg Turk</a> and <a href="http://graphics.stanford.edu/~levoy/">Marc Levoy</a> using a technique they developed to create polygonal models from range scans (see their <a href="http://www.cc.gatech.edu/~turk/zipper/zipper.html">paper</a>). The Bunny model they created consisted of exactly 69,451 triangles; we are using this model in our rendering server. There are five holes in the Bunny model: three of these were the result of inadequate coverage when scanning, and the two circular holes on the base existed on the physical Bunny, which was hollow.
+				</p>
+				<p>
+The Stanford Bunny has become one of models most commonly used in testing computer graphics techniques. You can visit the Bunny's <a href="http://www.gvu.gatech.edu/people/faculty/greg.turk/bunny/bunny.html">website</a> for more information and pictures. 
+				</p>
+			</div>				
+
+			
+			<!--
+			<figure class="post-image"> 
+				<img src="img/bunny.jpg" /> 
+			</figure>
+			-->    
+			    		
+
+		    <div id="loadingtext">Loading world...</div>
+    		<br/>
+			    	
+    	</article>
+		<!-- /.post -->
+	
+	</div>
+	<!-- /#content --> 
+
+	<aside id="sidebar">
+
+		<section class="widget clearfix">
+			<h4 class="widgettitle">Screen Information</h4>
+			<div id="screen-dimension">
+			</div>
+		</section>
+		<!-- /.widget -->
+
+		<section class="widget clearfix" id="control-panel">
+			<h4 class="widgettitle">Control Panel</h4>
+			<div id="control-panel">
+				
+				<fieldset>
+					<input type="checkbox" id="specular" checked /> Show specular highlight<br/>
+					<input type="checkbox" id="lighting" checked /> Use lighting<br/>
+
+				</fieldset>
+				
+				<fieldset>
+					<legend>Texture:</legend>
+    				<select id="texture">
+        				<option value="none">None</option>
+        				<option value="galvanized">Galvanized</option>
+        				<option selected value="earth">Earth</option>
+    				</select>
+				</fieldset>
+
+				<fieldset>
+					<legend>Material:</legend>
+            		<div>Shininess:</div>
+            		<div><input type="range" id="shininess" min="0" max="255" value="255" /></div>
+				</fieldset>
+
+				<fieldset>
+					<legend>Point Light:</legend>
+    				<table style="border: 0; padding: 10px;">
+        				<tr>
+            				<td><b>Location:</b>
+            				<td>X: <input type="text" id="lightPositionX" value="-10.0" />
+            				<td>Y: <input type="text" id="lightPositionY" value="4.0" />
+            				<td>Z: <input type="text" id="lightPositionZ" value="-20.0" />
+        				</tr>
+        				<tr>
+            				<td><b>Specular colour:</b>
+            				<td>R: <input type="text" id="specularR" value="0.8" />
+            				<td>G: <input type="text" id="specularG" value="0.8" />
+            				<td>B: <input type="text" id="specularB" value="0.8" />
+        				</tr>
+        				<tr>
+            				<td><b>Diffuse colour:</b>
+            				<td>R: <input type="text" id="diffuseR" value="0.8" />
+            				<td>G: <input type="text" id="diffuseG" value="0.8" />
+            				<td>B: <input type="text" id="diffuseB" value="0.8" />
+        				</tr>
+    				</table>
+				</fieldset>
+
+				<fieldset>
+					<legend>Ambient light:</legend>
+            		<div>Color:</div>
+           	 		<div>R: <input type="text" id="ambientR" value="0.2" /></div>
+            		<div>G: <input type="text" id="ambientG" value="0.2" /></div>
+            		<div>B: <input type="text" id="ambientB" value="0.2" /></div>
+				</fieldset>
+
+			</div>
+		</section>
+		<!-- /.widget -->
+
+		<!--
+		<section class="widget clearfix">
+			<div>
+				<img src="img/join_promo_a.png" max-width="100%" />
+			</div>		
+		</section>
+		-->
+		<!-- /.widget -->
+		
+		<!--
+		<section class="widget">
+			<h4 class="widgettitle">Sidebar</h4>
+			<ul>
+				<li><a href="#">WordPress</a> (3)</li>
+				<li><a href="#">Design</a> (23)</li>
+
+				<li><a href="#">Design </a>(18)</li>
+			</ul>
+		</section>
+		-->
+		<!-- /.widget -->
+
+		<!--
+		<section class="widget clearfix">
+			<h4 class="widgettitle">Flickr</h4>
+			<script type="text/javascript" src="http://www.flickr.com/badge_code_v2.gne?count=8.&display=latest&size=s&layout=x&source=user&user=71426227@N00"></script> 
+		</section>
+		-->
+		<!-- /.widget -->
+						
+	</aside>
+	<!-- /#sidebar -->
+
+
+	<footer id="footer">
+
+    	Galvanized texture courtesy of <a href="http://www.arroway-textures.com/">Arroway Textures</a>.<br/>
+    	Earth texture courtesy of <a href="http://www.esa.int/esaEO/SEMGSY2IU7E_index_0.html">the European Space Agency/Envisat</a>.<br/><br/>		
+		
+		<p>Created by <a href="http://www.stanleyhlng.com">Stanley Ng</a></p>
+
+	</footer>
+	<!-- /#footer --> 
+	
+</div>
+<!-- /#pagewrap -->
+
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-26517656-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+<script type="text/javascript">
+set_screen_dimension();
+</script>
+</body>
+
+</html>
